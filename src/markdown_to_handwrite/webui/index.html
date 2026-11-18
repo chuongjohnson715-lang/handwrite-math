@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="将 Markdown 排版成自然、可复现的手写实验报告。" />
+    <title>MarkdownToHandwrite · 手写转换</title>
+    <link rel="stylesheet" href="/styles.css?v=16" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-lead">
+        <span class="app-mark" aria-hidden="true">M</span>
+        <span class="topbar-title">MarkdownToHandwrite</span>
+      </div>
+
+      <div class="topbar-trail">
+        <span class="status-chip">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="service-status">本地渲染器已连接</span>
+        </span>
+        <label class="bar-button" title="导入配置 JSON">
+          <input id="config-import" type="file" accept="application/json,.json" hidden />
+          导入配置
+        </label>
+        <button class="bar-button" id="config-export" type="button">导出配置</button>
+        <button class="bar-button icon" id="theme-toggle" type="button" aria-label="切换明暗主题">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.4" />
+            <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside class="sidebar" aria-label="上传与转换设置">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>上传文件</h2>
+            <button class="panel-link" id="help-open" type="button">常见问题</button>
+          </div>
+
+          <div class="chip-row">
+            <label class="chip chip-accent">
+              <input id="markdown-import" type="file" accept="text/markdown,.md,.txt,.markdown" hidden />
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 16V4M7.5 8.5 12 4l4.5 4.5M4.5 15v3.5A1.5 1.5 0 0 0 6 20h12a1.5 1.5 0 0 0 1.5-1.5V15" />
+              </svg>
+              选择文件
+            </label>
+            <button class="chip" id="editor-toggle" type="button" aria-expanded="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 18.5 15.6 7.9l2.5 2.5L7.5 21H5v-2.5Z" />
+                <path d="m17 6.5 1.6-1.6a1.8 1.8 0 0 1 2.5 2.5L19.5 9" />
+              </svg>
+              仅输入文字
+            </button>
+            <select id="example-select" class="chip chip-menu" aria-label="载入示例文稿"></select>
+          </div>
+
+          <p class="panel-note">支持 .md、.txt、.markdown；行内公式 <code>$...$</code>，行间公式 <code>$$...$$</code>。</p>
+
+          <div class="editor" id="editor-wrap" hidden>
+            <textarea id="markdown-editor" spellcheck="false" aria-label="Markdown 内容" placeholder="# 在这里输入实验报告…"></textarea>
+            <div class="editor-stats" aria-live="polite">
+              <span><strong id="char-count">0</strong> 字符</span>
+              <span><strong id="line-count">0</strong> 行</span>
+              <span id="save-state">配置已同步</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>转换设置</h2>
+            <button class="panel-link" id="help-fonts" type="button">字体与纸张</button>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="font-select">选择字体</label>
+            <div class="select-wrap">
+              <select id="font-select" class="select"></select>
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="field-head">
+              <label class="field-label" for="paper-style-select">纸张背景</label>
+              <button class="field-link" id="custom-paper" type="button">自定义背景</button>
+            </div>
+            <div class="select-wrap">
+              <select id="paper-style-select" class="select">
+                <option value="plain">纯色纸（打印友好）</option>
+                <option value="lined">实拍-单红线信稿纸</option>
+                <option value="grid">实拍-方格纸</option>
+                <option value="dot">实拍-点阵纸</option>
+                <option value="image">实拍/自定义背景</option>
+              </select>
+            </div>
+            <div class="select-wrap" id="paper-image-wrap">
+              <select id="paper-image-select" class="select" hidden aria-label="背景素材"></select>
+            </div>
+            <label class="chip chip-accent upload-chip" id="paper-upload-label">
+              <input
+                id="paper-upload"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/bmp,application/pdf,.png,.jpg,.jpeg,.webp,.bmp,.pdf"
+                hidden
+              />
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 16V4M7.5 8.5 12 4l4.5 4.5M4.5 15v3.5A1.5 1.5 0 0 0 6 20h12a1.5 1.5 0 0 0 1.5-1.5V15" />
+              </svg>
+              <span id="paper-upload-text">导入背景图片</span>
+            </label>
+            <p class="panel-note" id="paper-upload-note">支持 PNG / JPEG / WebP / BMP / PDF，最大 16 MB；导入后自动切换到该背景。</p>
+          </div>
+
+          <div class="field">
+            <div class="field-head">
+              <label class="field-label" for="open-area-editor">书写区域</label>
+              <span class="field-value" id="area-summary">整页（按页边距）</span>
+            </div>
+            <button class="btn btn-quiet compact block" id="open-area-editor" type="button">设定书写区域</button>
+            <div class="style-actions wrap">
+              <button class="bar-button" id="detect-lines" type="button">自动检测横线</button>
+              <button class="bar-button" id="open-line-editor" type="button">手动标定横线</button>
+              <button class="bar-button" id="open-rectify" type="button">摆正背景</button>
+            </div>
+            <p class="panel-note">在背景上框出正文可以书写的部分；多个区域按序号依次填写，全部写满后换页。照片拍歪时先“摆正背景”（点四个角），再用“手动标定横线”点两条横线的左右两端（共四个点），横线是斜的也能压准。</p>
+          </div>
+
+          <div class="field">
+            <div class="field-head">
+              <label class="field-label" for="style-upload">我的字迹</label>
+              <span class="field-value" id="style-summary">未识别</span>
+            </div>
+            <label class="chip chip-accent upload-chip" id="style-upload-label">
+              <input
+                id="style-upload"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/bmp,.png,.jpg,.jpeg,.webp,.bmp"
+                hidden
+              />
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 16V4M7.5 8.5 12 4l4.5 4.5M4.5 15v3.5A1.5 1.5 0 0 0 6 20h12a1.5 1.5 0 0 0 1.5-1.5V15" />
+              </svg>
+              <span id="style-upload-text">上传字迹样本</span>
+            </label>
+            <p class="panel-note">写 3 行以上、十几个字，横平竖直、光线均匀；识别后给出笔宽、倾斜、行距和墨色。</p>
+            <div class="style-actions">
+              <button class="bar-button" id="download-template" type="button">下载抄写模板</button>
+              <label class="bar-button" id="glyph-upload-label">
+                <input id="glyph-upload" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
+                上传抄写单建库
+              </label>
+            </div>
+            <p class="panel-note">抄写模板是 198 个常用字的格子，照抄一页约 15 分钟；建库后正文里这些字直接用你写的字形，其余回退到字体。</p>
+          </div>
+
+          <div class="field">
+            <div class="field-head">
+              <label class="field-label" for="macro-ink">飞白（干笔）概率</label>
+              <span class="field-value" id="macro-ink-value">3%</span>
+            </div>
+            <input id="macro-ink" type="range" min="0" max="100" step="1" value="3" />
+            <div class="scale-row"><span>墨色均匀</span><span>处处飞白</span></div>
+          </div>
+
+          <div class="field">
+            <div class="field-head">
+              <label class="field-label" for="macro-scribble">涂写（划掉）概率</label>
+              <span class="field-value" id="macro-scribble-value">6%</span>
+            </div>
+            <input id="macro-scribble" type="range" min="0" max="100" step="1" value="6" />
+            <div class="scale-row"><span>一笔不改</span><span>满纸涂鸦</span></div>
+          </div>
+
+          <details class="disclosure" id="advanced-settings" open>
+            <summary>
+              <span>高级设置</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4" /></svg>
+            </summary>
+            <div class="disclosure-body">
+              <div class="field">
+                <div class="field-head">
+                  <label class="field-label" for="macro-position">文字位置凌乱度</label>
+                  <span class="field-value" id="macro-position-value">10%</span>
+                </div>
+                <input id="macro-position" type="range" min="0" max="100" step="1" value="10" />
+                <div class="scale-row"><span>整齐排列</span><span>凌乱不堪</span></div>
+              </div>
+
+              <div class="field">
+                <div class="field-head">
+                  <label class="field-label" for="macro-stroke">字体笔画凌乱度</label>
+                  <span class="field-value" id="macro-stroke-value">5%</span>
+                </div>
+                <input id="macro-stroke" type="range" min="0" max="100" step="1" value="5" />
+                <div class="scale-row"><span>工整清晰</span><span>歪七扭八</span></div>
+              </div>
+
+              <div class="field">
+                <div class="field-head">
+                  <label class="field-label" for="dpi-range">输出清晰度</label>
+                  <span class="field-value" id="dpi-value">300 DPI</span>
+                </div>
+                <input id="dpi-range" type="range" min="96" max="600" step="12" value="300" />
+                <div class="scale-row"><span>96 DPI</span><span id="dpi-hint">预览按单页 5 秒预算自适应</span><span>600 DPI</span></div>
+              </div>
+
+              <div class="segmented-control presets" role="group" aria-label="笔迹风格预设">
+                <button type="button" data-preset="formal">工整</button>
+                <button type="button" data-preset="natural" class="active">自然</button>
+                <button type="button" data-preset="casual">随性</button>
+              </div>
+
+              <div class="search">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="11" cy="11" r="6" />
+                  <path d="m16 16 4.5 4.5" />
+                </svg>
+                <input id="config-search" type="search" placeholder="搜索参数，如“边距”或“墨水”" aria-label="搜索配置参数" />
+                <button id="reset-config" type="button">重置</button>
+              </div>
+
+              <div class="groups" id="config-sections"></div>
+              <p class="panel-note" id="field-count">0 项参数 · 与上方滑杆共用同一份配置</p>
+            </div>
+          </details>
+
+          <div class="actions">
+            <button class="btn btn-primary" id="render-main" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5.5v13M7.5 11 12 5.5 16.5 11" />
+              </svg>
+              点击预览
+            </button>
+            <a class="btn btn-secondary disabled" id="download-pdf" aria-disabled="true">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 4.5v13M7.5 13 12 17.5 16.5 13M5 19.5h14" />
+              </svg>
+              下载文件
+            </a>
+          </div>
+        </section>
+      </aside>
+
+      <main class="stage" aria-label="预览效果">
+        <div class="stage-head">
+          <div class="stage-heading">
+            <h1>预览效果</h1>
+            <p class="stage-sub">屏幕所见即下载所得，预览与 PDF 使用同一份栅格</p>
+          </div>
+          <span class="pixel-badge" id="page-pixels">尚未生成</span>
+        </div>
+
+        <div class="stage-bar">
+          <div class="segmented-control pager">
+            <button class="seg-button" id="prev-page" type="button" disabled aria-label="上一页">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5-7 7 7 7" /></svg>
+            </button>
+            <span class="pager-label"><span id="current-page">0</span> / <span id="page-count">0</span></span>
+            <button class="seg-button" id="next-page" type="button" disabled aria-label="下一页">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 5 7 7-7 7" /></svg>
+            </button>
+          </div>
+
+          <div class="segmented-control zoomer">
+            <button class="seg-button" id="zoom-out" type="button" aria-label="缩小">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12" /></svg>
+            </button>
+            <div class="zoom-stack" role="group" aria-label="缩放比例">
+              <button class="seg-button seg-text zoom-step" id="zoom-actual" type="button" title="按原始像素 1:1 显示">1:1</button>
+              <button class="seg-button seg-text zoom-step" id="zoom-fit" type="button" title="适合窗口">
+                <span id="zoom-label">25%</span>
+              </button>
+            </div>
+            <button class="seg-button" id="zoom-in" type="button" aria-label="放大">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12" /></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="canvas" id="canvas-viewport">
+          <div class="page" id="paper-shell">
+            <div class="empty" id="empty-state">
+              <svg class="empty-mark" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 19.5 14.8 8.7l2.7 2.7L6.7 22.2H4v-2.7Z" />
+                <path d="m16.4 7.1 1.7-1.7a1.9 1.9 0 0 1 2.7 2.7l-1.7 1.7" />
+              </svg>
+              <p class="empty-title">还没有生成预览</p>
+              <p class="empty-sub">上传 Markdown 或载入示例后点击预览</p>
+              <button class="btn btn-primary compact" id="render-empty" type="button">点击预览</button>
+            </div>
+            <img id="preview-image" alt="生成的手写报告页面" hidden />
+          </div>
+
+          <div class="render-overlay" id="render-overlay" hidden>
+            <div class="spinner" aria-hidden="true"><span></span><span></span><span></span></div>
+            <strong id="render-title">正在生成预览</strong>
+            <p id="render-step">排版、书写并处理墨迹…</p>
+            <time id="render-time">00:00</time>
+          </div>
+        </div>
+
+        <p class="stage-hint" id="stage-hint">上传文件并点击预览按钮查看效果</p>
+      </main>
+    </div>
+
+    <div class="popover" id="help-popover" hidden>
+      <div class="popover-head">
+        <strong id="help-title">常见问题</strong>
+        <button id="help-close" type="button" aria-label="关闭">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+        </button>
+      </div>
+      <div class="popover-body" id="help-body"></div>
+    </div>
+
+    <div class="modal" id="area-modal" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="area-modal-title">
+        <header class="modal-head">
+          <div>
+            <h2 id="area-modal-title">设定书写区域</h2>
+            <p>在背景上拖拽画出正文可以书写的部分；框内序号即填写顺序。</p>
+          </div>
+          <button class="modal-close" id="area-close" type="button" aria-label="关闭">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+          </button>
+        </header>
+
+        <div class="area-stage-wrap">
+          <div class="area-stage" id="area-stage">
+            <img id="area-image" alt="背景预览" hidden />
+            <div class="area-layer" id="area-layer"></div>
+          </div>
+        </div>
+
+        <p class="area-note" id="area-note">拖拽空白处新建区域；拖动框体移动，拖动右下角调整大小。</p>
+
+        <footer class="modal-foot">
+          <div class="area-actions">
+            <button class="bar-button" id="area-fill" type="button">铺满整页</button>
+            <button class="bar-button" id="area-margin" type="button">按页边距</button>
+            <button class="bar-button" id="area-clear" type="button">清空</button>
+          </div>
+          <div class="area-actions">
+            <button class="bar-button" id="area-cancel" type="button">取消</button>
+            <button class="btn btn-primary compact" id="area-apply" type="button">应用</button>
+          </div>
+        </footer>
+      </div>
+    </div>
+
+    <div class="modal" id="rectify-modal" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="rectify-modal-title">
+        <header class="modal-head">
+          <div>
+            <h2 id="rectify-modal-title">摆正背景</h2>
+            <p>按顺序点纸张的四个角：左上、右上、右下、左下。程序把纸拉成正矩形，横线随之变水平。</p>
+          </div>
+          <button class="modal-close" id="rectify-close" type="button" aria-label="关闭">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+          </button>
+        </header>
+
+        <div class="line-stage" id="rectify-stage">
+          <img id="rectify-image" alt="背景预览" />
+          <canvas id="rectify-canvas" aria-hidden="true"></canvas>
+        </div>
+
+        <p class="area-note" id="rectify-note">已点 0 / 4 个角</p>
+
+        <footer class="modal-foot">
+          <span class="style-quality" id="rectify-summary"></span>
+          <div class="area-actions">
+            <button class="bar-button" id="rectify-reset" type="button">重选</button>
+            <button class="btn btn-primary compact" id="rectify-apply" type="button" disabled>摆正并应用</button>
+          </div>
+        </footer>
+      </div>
+    </div>
+
+    <div class="modal" id="line-modal" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="line-modal-title">
+        <header class="modal-head">
+          <div>
+            <h2 id="line-modal-title">手动标定横线</h2>
+            <p>对两条相邻的横线各点左右两端：上线左端 → 上线右端 → 下线左端 → 下线右端。程序按这两条线的间距和倾斜铺满整页，照片拍斜、横线在图上不水平也能压准。</p>
+          </div>
+          <button class="modal-close" id="line-close" type="button" aria-label="关闭">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+          </button>
+        </header>
+
+        <div class="line-stage" id="line-stage">
+          <img id="line-image" alt="背景预览" />
+          <canvas class="line-marks" id="line-marks" aria-hidden="true"></canvas>
+        </div>
+
+        <p class="area-note" id="line-note">已点 0 / 4 个点：点第一条横线的左端</p>
+
+        <footer class="modal-foot">
+          <span class="style-quality" id="line-summary"></span>
+          <div class="area-actions">
+            <button class="bar-button" id="line-reset" type="button">重选</button>
+            <button class="btn btn-primary compact" id="line-apply" type="button" disabled>应用</button>
+          </div>
+        </footer>
+      </div>
+    </div>
+
+    <div class="modal" id="section-modal" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="section-modal-title">
+        <header class="modal-head">
+          <div>
+            <h2 id="section-modal-title">分节背景</h2>
+            <p>给不同的节指定不同底图；选了底图的节会另起一页，没选的节沿用上面的全局背景。</p>
+          </div>
+          <button class="modal-close" id="section-close" type="button" aria-label="关闭">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+          </button>
+        </header>
+
+        <div class="section-toolbar">
+          <label for="section-level">按</label>
+          <select id="section-level" class="select section-level">
+            <option value="1">一级标题</option>
+            <option value="2">二级标题</option>
+            <option value="3">三级标题</option>
+          </select>
+          <span>分节</span>
+          <span class="field-value" id="section-count">尚未指定</span>
+        </div>
+
+        <div class="section-list" id="section-list"></div>
+
+        <footer class="modal-foot">
+          <div class="area-actions">
+            <button class="bar-button" id="section-clear" type="button">全部清除</button>
+          </div>
+          <div class="area-actions">
+            <button class="bar-button" id="section-cancel" type="button">取消</button>
+            <button class="btn btn-primary compact" id="section-apply" type="button">应用</button>
+          </div>
+        </footer>
+      </div>
+    </div>
+
+    <div class="modal" id="style-modal" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="style-modal-title">
+        <header class="modal-head">
+          <div>
+            <h2 id="style-modal-title">我的字迹 · 识别结果</h2>
+            <p>蓝框是切分出的单字，绿框是行，红线是测得的倾斜方向。</p>
+          </div>
+          <button class="modal-close" id="style-close" type="button" aria-label="关闭">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+          </button>
+        </header>
+
+        <div class="style-body">
+          <div class="style-preview">
+            <img id="style-overlay" alt="字迹切分预览" hidden />
+          </div>
+          <div class="style-metrics" id="style-metrics"></div>
+        </div>
+
+        <p class="area-note" id="style-note"></p>
+        <p class="style-quality" id="style-quality"></p>
+
+        <footer class="modal-foot">
+          <div class="style-save">
+            <input id="style-name" type="text" value="我的笔迹" maxlength="20" aria-label="笔迹名称" />
+            <button class="bar-button" id="style-save" type="button">保存为手写类型</button>
+          </div>
+          <div class="area-actions">
+            <button class="bar-button" id="style-cancel" type="button">取消</button>
+            <button class="btn btn-primary compact" id="style-apply" type="button">应用到配置</button>
+          </div>
+        </footer>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+      <span class="toast-mark">✓</span>
+      <div><strong id="toast-title">完成</strong><p id="toast-message"></p></div>
+    </div>
+
+    <script src="/app.js?v=16" defer></script>
+  </body>
+</html>

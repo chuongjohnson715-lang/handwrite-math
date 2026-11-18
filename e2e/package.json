@@ -1,0 +1,13 @@
+{
+  "name": "markdown-to-handwrite-e2e",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "在真实浏览器里点一遍背景导入与书写区域流程",
+  "scripts": {
+    "verify": "node verify.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.64.1"
+  }
+}
